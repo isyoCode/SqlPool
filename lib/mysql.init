@@ -1,0 +1,12 @@
+#���ݿ����ӳ������ļ�
+ip=127.0.0.1
+port=3306
+username=yd
+passwd=123456
+dbname=t1
+initSize=10
+maxSize=1024
+#������ʱ�� Ĭ�ϵ�λΪs
+maxIdleTime=60
+#���ӳ�ʱʱ�� ��λΪms
+maxConnectionTimeOut=100
