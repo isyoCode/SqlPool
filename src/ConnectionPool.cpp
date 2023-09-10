@@ -3,14 +3,14 @@
 #include <string>
 
 
-//��ȡ���ӳض���Ψһ=ʵ��
+//单例模式获取链接
 ConnectionPool* ConnectionPool::getConnectionPool() {
 	//���õ�����ģʽ  ���ڴ������ӳض���
 	static ConnectionPool pool;   
 	return &pool;
 }
 
-//�������ļ��м���������
+//从配置文件中加载配置项目
 bool ConnectionPool::loadConfigFile() {
 	FILE* pf = fopen("./mysql.init", "r");
 	if (!pf) {
@@ -25,7 +25,7 @@ bool ConnectionPool::loadConfigFile() {
 		std::string str = line;
 		
 		int idx = str.find('=', 0);
-		if (idx == -1) //��Ч��������
+		if (idx == -1) 
 		{
 			continue;
 		}
@@ -60,123 +60,103 @@ bool ConnectionPool::loadConfigFile() {
 		else if (key == "dbname") {
 			m_dbname = value;
 		}
-
 	}
-
 	return true;
 }
 
 
-//���ӳصĹ��캯��
+//create connectpool
 ConnectionPool::ConnectionPool() {
-	//������������
 	if (!loadConfigFile())
 	{
 		return;
 	}
-	//������ʼ����������
+	//create init connect
 	for (int i = 0; i < m_init_size; i++)
 	{
 		//Connection* p = nullptr;
 		Connection* p = new Connection;
-		p->connect(m_ip, m_port, m_username, m_passwd, m_dbname);  //�Ѿ���������
-		p->refreshAliveTime();    //ˢ��һ�¿�ʼ���е���ʼʱ��
-		m_connectionQueue.push(p);  //������뵽���е���?
-		m_connectionCnt++;    //��¼��������
+		p->connect("localhost", m_port, "yd", "123456", "t1");  //here should be non-const 
+		p->refreshAliveTime();    
+		m_connectionQueue.push(p);  
+		m_connectionCnt++;    
 	}
-
-	//����һ���µ��߳� ��Ϊ����������
+	//create a productor for connection link
 	thread produce(std::bind(&ConnectionPool::produceConnTask,this));
-	produce.detach();  //�������? �൱������Ϊ�ػ��߳�
+	produce.detach();  
 
-	//����һ���µĶ�ʱ�̣߳�ɨ�賬��maxIdleTime ʱ��Ŀ�������? ,���ж������ӻ���
-	thread scanner(std::bind(&ConnectionPool::scannerConnTask, this));  //ʹ�ð��� ��Ϊthis��scannerConnTask����
+	//create a scanner for outtime link
+	thread scanner(std::bind(&ConnectionPool::scannerConnTask, this));  
 	scanner.detach();
 	
 }
 
-//�����ڶ������̵߳��� ר�Ÿ����̵߳�����
+//productor for conntask
 void ConnectionPool::produceConnTask() {
 	for (;;) {
 		unique_lock<mutex> lock(m_queueMutex);
 		while (!m_connectionQueue.empty())
 		{ 
-			cv.wait(lock); //���в���  �˴������߳̽���ȴ�״�?
+			cv.wait(lock); 
 		}
 
-		//��������û�е������� �����µ�����
 		if (m_connectionCnt < m_max_size)
 		{
-			//�����µ�����
 			Connection* p = new Connection;
-			p->connect(m_ip, m_port, m_username, m_passwd, m_dbname);  //�Ѿ���������
-			p->refreshAliveTime();    //ˢ��һ�¿�ʼ���е���ʼʱ��
-			m_connectionQueue.push(p);  //������뵽���е���?
-			m_connectionCnt++;    //��¼��������
+			p->connect(m_ip, m_port, m_username, m_passwd, m_dbname);  
+			p->refreshAliveTime();   
+			m_connectionQueue.push(p);  
+			m_connectionCnt++;   
 		}
-
-		//֪ͨ�������߳̿�����������
 		cv.notify_all();
 	}
 }
 
-
-//���ⲿ�ṩ�ӿڣ������ӳ��л�ȡһ�����õĿ�������
 shared_ptr<Connection> ConnectionPool::getConnection() {
-	//��ȡ����ʱ��Ҫ����
 	unique_lock<mutex> lock(m_queueMutex);
 	
-	//�ж϶����Ƿ�Ϊ��
 	if (m_connectionQueue.empty()) {
 		cv.wait_for(lock, chrono::milliseconds(m_connectionTimeout));
-		//���Ѻ�
 		if (m_connectionQueue.empty()) {
-			LOG("��ȡ�������ӳ�ʱ��.....��ȡ����ʧ��!");
+			LOG("the connectionQue is empty and get connection falied!");
 			return nullptr;
 		}
 	}
 
 	/*
-	share_ptr ����ʱ ���connection��Դֱ��delete��  �൱�ڵ���connection���������� connection�ͱ�close
-	��Ҫ�Զ���share_ptr ���ͷ���Դ��ʽ ��connectionֱ�ӹ黹��queue����
+	here we set the allocator which will add the connection who finished task to queue
 	*/
 	//����һ������ָ��
 	shared_ptr<Connection> sp(m_connectionQueue.front(),
 		[&](Connection* pcon) {
-			//��������Դ�黹���̶߳��е���
-			unique_lock<mutex> lock(m_queueMutex); //�����ڷ�����Ӧ���߳��е��õ� һ��Ҫ���Ƕ��е��̰߳�ȫ
+			unique_lock<mutex> lock(m_queueMutex);
 			pcon->refreshAliveTime();
 			m_connectionQueue.push(pcon); 
 		});
-	m_connectionQueue.pop();  //�������е�ָ�뵯�� ����������һ��
-	cv.notify_all();   //�����������Ժ� ֪ͨ�������߳��ж� �Ƿ����Ϊ��?  �Ͻ���������
+	m_connectionQueue.pop();  
+	cv.notify_all();  
 
 	return sp;
 }
 
-
 void ConnectionPool::scannerConnTask() {
 	while (1)
 	{
-		//ͨ��sleepģ�ⶨʱЧ��
+		// by sleep simulate definite-time
 		this_thread::sleep_for(chrono::seconds(m_max_IdleTime));
-
-		//ɨ���������� �ͷŶ��������?
-		//Ϊ���̰߳�ȫ  ������Ҫ���ӻ�����
 		unique_lock<mutex> lock(m_queueMutex);
 		while (m_connectionCnt > m_init_size)
 		{
 			Connection* p = m_connectionQueue.front();
 			if (p->getAlivetime() >= (m_connectionTimeout * 1000)) {
-				//�ͷŸ�����
+				
 				m_connectionQueue.pop();
 				m_connectionCnt--;
-				delete p;  //����~Connection�����ͷ�����
+				delete p; 
 			}
 			else {
-				break;  //��ͷ������û�г������ռ�ʱ�� �����϶�û��
+				break;  
 			}
-
 		}
 	}
 }

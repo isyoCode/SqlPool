@@ -3,12 +3,12 @@
 using namespace std;
 #include "public.h"
 
-// ³õÊ¼»¯Êı¾İ¿âÁ¬½Ó
+
 Connection::Connection()
 {
 	m_conn = mysql_init(nullptr);
 }
-// ÊÍ·ÅÊı¾İ¿âÁ¬½Ó×ÊÔ´
+
 Connection::~Connection() {
 	if (m_conn)
 	{
@@ -16,29 +16,28 @@ Connection::~Connection() {
 	}
 }
 
-//Á´½ÓÊı¾İ¿â
 bool Connection::connect(string ip,unsigned short port,string user,string passwd,string dbname) {
-	//´´½¨Ò»¸öÁ¬½ÓÁ´
 	MYSQL* p = mysql_real_connect(m_conn, ip.c_str(), user.c_str(), passwd.c_str(), dbname.c_str(), port, nullptr, 0);
+	if( p == nullptr) std::cout << "connect error !" <<std::endl;
 	return p != nullptr ? true : false;
 }
 
-//¸üĞÂ²Ù×÷ insert delete update 
+// insert delete update 
 bool Connection::update(string sql) {
-	//Ö´ĞĞsqlÓï¾ä
+	//Ö´ï¿½ï¿½sqlï¿½ï¿½ï¿½
 	if (mysql_query(m_conn,sql.c_str()))
 	{
-		LOG("¸üĞÂÊ§°Ü:" + sql);
+		LOG("update error :" + sql);
 		return false;
 	}
 	return true;
 }
 
-//²éÑ¯²Ù×÷
+
 MYSQL_RES* Connection::query(string sql) {
 	if (mysql_query(m_conn,sql.c_str()))
 	{
-		LOG("²éÑ¯Ê§°Ü:" + sql);
+		std::cout << "query error !" << std::endl;
 		return nullptr;
 	}
 	return mysql_use_result(m_conn);

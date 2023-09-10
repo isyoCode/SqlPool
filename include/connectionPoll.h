@@ -1,7 +1,7 @@
 #ifndef CONNECTIONPOOL_H
 #define CONNECTIONPOOL_H
 
-//ʵ�����ӳع���ģ��
+
 
 #include <mutex>
 #include <iostream>
@@ -19,48 +19,38 @@ using namespace std;
 class ConnectionPool
 {
 public:
-	static ConnectionPool* getConnectionPool();   //��ȡ���ӳض���ʵ����Ψһ�ӿ�
+	static ConnectionPool* getConnectionPool();   
 	 
-	//���ⲿ�ṩ�ӿ� �����ӳ��л�ȡһ�����õĿ�������
-	//ʹ������ָ���Զ������ⲿʹ�õ��ͷŹ���
 	shared_ptr<Connection> getConnection();
 
 private:
-	ConnectionPool(); // #1���캯��˽�л�
+	ConnectionPool(); 
 	
-	bool loadConfigFile();  //�������ļ��м���������
-
-	//�����ڶ������߳��� ר�Ÿ�������������
+	bool loadConfigFile();  
+	
 	void produceConnTask();
 	
-	//ɨ�賬��maxIdleTimeʱ��Ŀ������ӣ����ж�Ӧ�����ӻ���
 	void scannerConnTask();
 	
 
 
+	string m_ip;  
+	unsigned short m_port;	
+	string m_username;  
+	string m_passwd;	
+	string m_dbname;  
 
-	//���ӳس�Ա����
-	string m_ip;  //���ݿ�ip��ַ
-	unsigned short m_port;	//���ݿ�˿ں�   Ĭ��Ϊ3306
-	string m_username;  //���ݿ��¼�û���
-	string m_passwd;	//���ݿ��¼����
-	string m_dbname;  //���ӵ����ݿ�����
+	int m_init_size;  
+	int m_max_size;    
+	int m_max_IdleTime; 
+	int m_connectionTimeout; 
 
-	int m_init_size;  //���ӳس�ʼ������
-	int m_max_size;    //���ӳ��������
-	int m_max_IdleTime; //������ʱ��
-	int m_connectionTimeout; //mysql��ȡ�������ʱʱ��
-
-
-
-
-
-	//�������ӳ�
-	queue<Connection*> m_connectionQueue; //�洢mysql���Ӷ���
-	mutex m_queueMutex;  //ά�����Ӷ��е��̰߳�ȫ������
+	// create connection_pool 
+	queue<Connection*> m_connectionQueue; 
+	mutex m_queueMutex;  // the mutex
 	
-	atomic_int m_connectionCnt;   //��¼������������connection���ӵ�������
-	condition_variable cv;  //������������,�������������̺߳����������߳�ͨ��
+	atomic_int m_connectionCnt;   // count for connection 
+	condition_variable cv;  
 
 };
 
