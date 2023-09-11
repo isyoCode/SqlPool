@@ -16,7 +16,7 @@ include_directories(/usr/include/mysql)
 
 add_subdirectory(src)
 
-install_files()
+#install_files()
 
 #先制作动态链接库
 #add_library()

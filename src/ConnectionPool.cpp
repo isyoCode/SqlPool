@@ -61,6 +61,12 @@ bool ConnectionPool::loadConfigFile() {
 			m_dbname = value;
 		}
 	}
+
+	// std::cout << m_ip <<endl;
+	// std::cout << m_port <<endl;
+	// std::cout << m_username <<endl;
+	// std::cout << m_passwd <<endl;
+	// std::cout << m_dbname <<endl;
 	return true;
 }
 
@@ -71,12 +77,25 @@ ConnectionPool::ConnectionPool() {
 	{
 		return;
 	}
+
+
+	// cout << "localhost == m_ip?  " << (m_ip.substr(0,m_ip.size()-1) == "localhost") <<endl;
+	// cout << "localhost == m_ip?  " << (m_port == 3306) <<endl;
+	// cout << "localhost == m_ip?  " << (m_username.substr(0,m_username.size()-1) == "yd") <<endl;
+	// cout << "localhost == m_ip?  " << (m_dbname.substr(0,m_dbname.size()-1) == "t1") <<endl;
+	// cout << "localhost == m_ip?  " << (m_passwd.substr(0,m_passwd.size()-1) == "123456") <<endl;
+
 	//create init connect
 	for (int i = 0; i < m_init_size; i++)
 	{
 		//Connection* p = nullptr;
 		Connection* p = new Connection;
-		p->connect("localhost", m_port, "yd", "123456", "t1");  //here should be non-const 
+		//p->connect("localhost", m_port, "yd", "123456", "t1");  //here should be non-const 
+		p->connect(m_ip.substr(0,m_ip.size()-1),
+		 			m_port,
+					m_username.substr(0,m_username.size()-1), 
+					m_passwd.substr(0,m_passwd.size()-1), 
+					m_dbname.substr(0,m_dbname.size()-1));  //here should be non-const 
 		p->refreshAliveTime();    
 		m_connectionQueue.push(p);  
 		m_connectionCnt++;    
